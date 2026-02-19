@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Listen Together</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      text-align: center;
+      padding-top: 40px;
+    }
+    button {
+      padding: 10px 16px;
+      margin: 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background: #22c55e;
+      color: #000;
+      font-weight: bold;
+    }
+    audio {
+      margin-top: 20px;
+      width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+    <h2>🎧 Listen Together</h2>
+  <p>Same song, same moment</p>
+
+  <button id="joinBtn">▶ Join</button>
+  <br />
+
+  <audio id="audio" controls></audio>
+
+  <!-- Socket.IO -->
+  <script src="https://9b7e-103-134-3-75.ngrok-free.app/socket.io/socket.io.js"></script>
+
+  <script>
+    const socket = io();
+    const audio = document.getElementById("audio");
+    const joinBtn = document.getElementById("joinBtn");
+
+    let isRemote = false;
+    let hasJoined = false;
+
+    joinBtn.onclick = () => {
+      hasJoined = true;
+      alert("joined")
+      console.log("Joined");
+    };
+
+    socket.on("sync-state", (state) => {
+      isRemote = true;
+       audio.src = "song.mp3";
+
+      audio.currentTime = state.currentTime;
+
+      if (state.isPlaying && hasJoined) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+
+      setTimeout(() => isRemote = false, 200);
+    });
+
+    socket.on("play", (time) => {
+      if (!hasJoined) return;
+      if (Math.abs(audio.currentTime - time) > 0.3) {
+        isRemote = true;
+        audio.currentTime = time;
+        audio.play();
+        setTimeout(() => isRemote = false, 200);
+      }
+    });
+
+    socket.on("pause", (time) => {
+      if (!hasJoined) return;
+      isRemote = true;
+      audio.currentTime = time;
+      audio.pause();
+      setTimeout(() => isRemote = false, 200);
+    });
+    socket.on("seek", (time) => {
+      if (!hasJoined) return;
+      isRemote = true;
+      audio.currentTime = time;
+      setTimeout(() => isRemote = false, 200);
+    });
+
+    audio.addEventListener("play", () => {
+      if (!isRemote && hasJoined) socket.emit("play", audio.currentTime);
+    });
+
+    audio.addEventListener("pause", () => {
+      if (!isRemote && hasJoined) socket.emit("pause", audio.currentTime);
+    });
+
+    audio.addEventListener("seeked", () => {
+      if (!isRemote && hasJoined) socket.emit("seek", audio.currentTime);
+    });
+  </script>
+
+</body>
+</html>
